@@ -1,0 +1,23 @@
+package repository
+
+import (
+	"context"
+	"services/auth/internal/db"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type UserRepository struct {
+	queries *db.Queries
+}
+
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{queries: db.New(pool)}
+}
+
+func (r *UserRepository) CreateUser(ctx context.Context, username, hash string) error {
+	return r.queries.CreateUser(ctx, db.CreateUserParams{
+		Username:     username,
+		PasswordHash: hash,
+	})
+}
