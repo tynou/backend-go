@@ -30,5 +30,6 @@ func main() {
 
 	r := gin.Default()
 	r.POST("/register", h.Register)
+	r.POST("/login", h.Login)
 	r.Run(":8081")
 }

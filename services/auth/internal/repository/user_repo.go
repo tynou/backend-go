@@ -21,3 +21,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, username, hash string) 
 		PasswordHash: hash,
 	})
 }
+
+func (r *UserRepository) GetByUsername(ctx context.Context, username string) (db.User, error) {
+	return r.queries.GetUserByUsername(ctx, username)
+}
