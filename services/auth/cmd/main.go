@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"services/auth/internal/handlers"
+	"services/auth/internal/producer"
 	"services/auth/internal/repository"
 	"services/auth/internal/service"
 
@@ -30,12 +31,18 @@ func main() {
 		log.Fatalf("Ошибка применения миграций: %v", err)
 	}
 
-	ctx := context.Background()
-	pool, _ := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5433/auth")
+	pool, err := pgxpool.New(context.Background(), "postgres://postgres:1234@localhost:5433/auth")
+	if err != nil {
+		log.Fatalf("Ошибка подключения к БД: %v", err)
+	}
 	defer pool.Close()
 
+	brokers := []string{"localhost:9092"}
+	userProducer := producer.NewUserRegisteredProducer(brokers)
+	defer userProducer.Close()
+
 	repo := repository.NewUserRepository(pool)
-	svc := service.NewAuthService(repo)
+	svc := service.NewAuthService(repo, userProducer)
 	h := handlers.NewAuthHandler(svc)
 
 	r := gin.Default()

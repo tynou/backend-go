@@ -15,7 +15,7 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 	return &UserRepository{queries: db.New(pool)}
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, username, hash string) error {
+func (r *UserRepository) CreateUser(ctx context.Context, username, hash string) (db.User, error) {
 	return r.queries.CreateUser(ctx, db.CreateUserParams{
 		Username:     username,
 		PasswordHash: hash,
