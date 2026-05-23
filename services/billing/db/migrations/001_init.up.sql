@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    balance NUMERIC(10, 2) NOT NULL DEFAULT 0.00
+);
