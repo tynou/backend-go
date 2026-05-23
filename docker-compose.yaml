@@ -10,6 +10,17 @@ services:
     ports:
       - "5433:5432"
 
+  billing-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: billing
+    volumes:
+      - billing_db_data:/var/lib/postgresql
+    ports:
+      - "5434:5432"
+
   kafka:
     image: apache/kafka:latest
     ports:
@@ -48,6 +59,7 @@ services:
 
 volumes:
   auth_db_data:
+  billing_db_data:
 
   kafka_data:
   kafka_secrets:
