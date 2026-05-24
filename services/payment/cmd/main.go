@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"payment/internal/handlers"
+	"payment/internal/producer"
+	"payment/internal/repository"
+	"payment/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -25,7 +28,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	h := handlers.NewPaymentHandler()
+	brokers := []string{"localhost:9092"}
+	paymentProducer := producer.NewPaymentInitProducer(brokers)
+	defer paymentProducer.Close()
+
+	repo := repository.NewPaymentRepository(pool)
+	svc := service.NewPaymentService(repo, paymentProducer)
+	h := handlers.NewPaymentHandler(svc)
 
 	r := gin.Default()
 
