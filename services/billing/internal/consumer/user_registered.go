@@ -24,8 +24,8 @@ func NewUserRegisteredConsumer(brokers []string, repo *repository.WalletReposito
 	})
 
 	return &UserRegisteredConsumer{
-		reader: reader,
 		repo:   repo,
+		reader: reader,
 	}
 }
 

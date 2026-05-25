@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWallet = `-- name: CreateWallet :exec
@@ -16,4 +18,23 @@ INSERT INTO wallets (user_id) VALUES ($1)
 func (q *Queries) CreateWallet(ctx context.Context, userID int32) error {
 	_, err := q.db.Exec(ctx, createWallet, userID)
 	return err
+}
+
+const deductBalance = `-- name: DeductBalance :execrows
+UPDATE wallets
+SET balance = balance - $1
+WHERE user_id = $2 AND balance >= $1
+`
+
+type DeductBalanceParams struct {
+	Balance pgtype.Numeric
+	UserID  int32
+}
+
+func (q *Queries) DeductBalance(ctx context.Context, arg DeductBalanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deductBalance, arg.Balance, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"billing/internal/consumer"
+	"billing/internal/producer"
 	"billing/internal/repository"
 	"context"
 	"errors"
@@ -33,11 +34,16 @@ func main() {
 	repo := repository.NewWalletRepository(pool)
 
 	brokers := []string{"localhost:9092"}
-	userConsumer := consumer.NewUserRegisteredConsumer(brokers, repo)
+	paymentResultProducer := producer.NewPaymentResultProducer(brokers)
+	defer paymentResultProducer.Close()
 
-	go userConsumer.Start(ctx)
+	userRegisteredConsumer := consumer.NewUserRegisteredConsumer(brokers, repo)
+	defer userRegisteredConsumer.Close()
+	paymentInitConsumer := consumer.NewPaymentInitConsumer(brokers, repo, paymentResultProducer)
+	defer paymentInitConsumer.Close()
+
+	go userRegisteredConsumer.Start(ctx)
+	go paymentInitConsumer.Start(ctx)
 
 	<-ctx.Done()
-
-	userConsumer.Close()
 }

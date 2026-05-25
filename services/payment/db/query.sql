@@ -3,7 +3,7 @@ INSERT INTO payments (user_id, amount, status)
 VALUES ($1, $2, $3)
 RETURNING *;
 
--- name: UpdatePaymentStatus :one
+-- name: UpdatePaymentStatus :exec
 UPDATE payments
 SET status = $2
 WHERE id = $1

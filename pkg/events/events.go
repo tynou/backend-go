@@ -15,5 +15,7 @@ type PaymentInit struct {
 
 type PaymentResult struct {
 	PaymentID uuid.UUID `json:"payment_id"`
-	Status    string    `json:"status"`
+	UserID    int32     `json:"user_id"`
+	Amount    float64   `json:"amount"`
+	Success   bool      `json:"success"`
 }

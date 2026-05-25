@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"payment/internal/db"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -30,5 +31,19 @@ func (r *PaymentRepository) CreatePayment(ctx context.Context, userID int32, amo
 		UserID: userID,
 		Amount: numericAmount,
 		Status: db.PaymentStatusTypePending,
+	})
+}
+
+func (r *PaymentRepository) UpdatePaymentStatus(ctx context.Context, paymentID uuid.UUID, success bool) error {
+	var status db.PaymentStatusType
+	if success {
+		status = db.PaymentStatusTypeSuccess
+	} else {
+		status = db.PaymentStatusTypeFailure
+	}
+
+	return r.queries.UpdatePaymentStatus(ctx, db.UpdatePaymentStatusParams{
+		ID:     paymentID,
+		Status: status,
 	})
 }

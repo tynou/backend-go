@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"payment/internal/consumer"
 	"payment/internal/handlers"
 	"payment/internal/producer"
 	"payment/internal/repository"
@@ -28,12 +29,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	brokers := []string{"localhost:9092"}
-	paymentProducer := producer.NewPaymentInitProducer(brokers)
-	defer paymentProducer.Close()
-
 	repo := repository.NewPaymentRepository(pool)
-	svc := service.NewPaymentService(repo, paymentProducer)
+
+	brokers := []string{"localhost:9092"}
+	paymentInitProducer := producer.NewPaymentInitProducer(brokers)
+	defer paymentInitProducer.Close()
+
+	paymentResultConsumer := consumer.NewPaymentResultConsumer(brokers, repo)
+	defer paymentResultConsumer.Close()
+
+	go paymentResultConsumer.Start(context.Background())
+
+	svc := service.NewPaymentService(repo, paymentInitProducer)
 	h := handlers.NewPaymentHandler(svc)
 
 	r := gin.Default()
