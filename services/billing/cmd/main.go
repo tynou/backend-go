@@ -1,12 +1,13 @@
 package main
 
 import (
-	"billing/internal/consumer"
+	"billing/internal/handlers"
 	"billing/internal/repository"
 	"context"
 	"errors"
 	"log"
 	"os/signal"
+	"pkg/consumer"
 	"pkg/producer"
 	"syscall"
 
@@ -37,9 +38,19 @@ func main() {
 	kafkaProducer := producer.NewKafkaProducer(brokers)
 	defer kafkaProducer.Close()
 
-	userRegisteredConsumer := consumer.NewUserRegisteredConsumer(brokers, repo)
+	eventHandler := handlers.NewBillingEventHandler(repo, kafkaProducer)
+
+	userRegisteredConsumer := consumer.NewKafkaConsumer(
+		brokers,
+		"billing-service-group",
+		eventHandler.OnUserRegistered,
+	)
 	defer userRegisteredConsumer.Close()
-	paymentInitConsumer := consumer.NewPaymentInitConsumer(brokers, repo, kafkaProducer)
+	paymentInitConsumer := consumer.NewKafkaConsumer(
+		brokers,
+		"billing-service-group",
+		eventHandler.OnPaymentInit,
+	)
 	defer paymentInitConsumer.Close()
 
 	go userRegisteredConsumer.Start(ctx)

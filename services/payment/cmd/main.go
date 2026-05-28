@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
-	"payment/internal/consumer"
 	"payment/internal/handlers"
 	"payment/internal/repository"
 	"payment/internal/service"
+	"pkg/consumer"
 	"pkg/producer"
 
 	"github.com/gin-gonic/gin"
@@ -30,12 +30,17 @@ func main() {
 	defer pool.Close()
 
 	repo := repository.NewPaymentRepository(pool)
+	eventHandler := handlers.NewPaymentEventHandler(repo)
 
 	brokers := []string{"localhost:9092"}
 	kafkaProducer := producer.NewKafkaProducer(brokers)
 	defer kafkaProducer.Close()
 
-	paymentResultConsumer := consumer.NewPaymentResultConsumer(brokers, repo)
+	paymentResultConsumer := consumer.NewKafkaConsumer(
+		brokers,
+		"payment-service-group",
+		eventHandler.OnPaymentResult,
+	)
 	defer paymentResultConsumer.Close()
 
 	go paymentResultConsumer.Start(context.Background())
