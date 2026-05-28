@@ -6,9 +6,9 @@ import (
 	"log"
 	"payment/internal/consumer"
 	"payment/internal/handlers"
-	"payment/internal/producer"
 	"payment/internal/repository"
 	"payment/internal/service"
+	"pkg/producer"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -32,15 +32,15 @@ func main() {
 	repo := repository.NewPaymentRepository(pool)
 
 	brokers := []string{"localhost:9092"}
-	paymentInitProducer := producer.NewPaymentInitProducer(brokers)
-	defer paymentInitProducer.Close()
+	kafkaProducer := producer.NewKafkaProducer(brokers)
+	defer kafkaProducer.Close()
 
 	paymentResultConsumer := consumer.NewPaymentResultConsumer(brokers, repo)
 	defer paymentResultConsumer.Close()
 
 	go paymentResultConsumer.Start(context.Background())
 
-	svc := service.NewPaymentService(repo, paymentInitProducer)
+	svc := service.NewPaymentService(repo, kafkaProducer)
 	h := handlers.NewPaymentHandler(svc)
 
 	r := gin.Default()

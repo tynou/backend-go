@@ -2,12 +2,12 @@ package main
 
 import (
 	"billing/internal/consumer"
-	"billing/internal/producer"
 	"billing/internal/repository"
 	"context"
 	"errors"
 	"log"
 	"os/signal"
+	"pkg/producer"
 	"syscall"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -34,12 +34,12 @@ func main() {
 	repo := repository.NewWalletRepository(pool)
 
 	brokers := []string{"localhost:9092"}
-	paymentResultProducer := producer.NewPaymentResultProducer(brokers)
-	defer paymentResultProducer.Close()
+	kafkaProducer := producer.NewKafkaProducer(brokers)
+	defer kafkaProducer.Close()
 
 	userRegisteredConsumer := consumer.NewUserRegisteredConsumer(brokers, repo)
 	defer userRegisteredConsumer.Close()
-	paymentInitConsumer := consumer.NewPaymentInitConsumer(brokers, repo, paymentResultProducer)
+	paymentInitConsumer := consumer.NewPaymentInitConsumer(brokers, repo, kafkaProducer)
 	defer paymentInitConsumer.Close()
 
 	go userRegisteredConsumer.Start(ctx)

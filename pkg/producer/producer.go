@@ -4,37 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"pkg/events"
-	"strconv"
 
 	"github.com/segmentio/kafka-go"
 )
 
-type PaymentInitProducer struct {
+type KafkaProducer struct {
 	writer *kafka.Writer
 }
 
-func NewPaymentInitProducer(brokers []string) *PaymentInitProducer {
-	return &PaymentInitProducer{
+func NewKafkaProducer(brokers []string) *KafkaProducer {
+	return &KafkaProducer{
 		writer: &kafka.Writer{
 			Addr:     kafka.TCP(brokers...),
-			Topic:    "payment.init",
 			Balancer: &kafka.LeastBytes{},
 		},
 	}
 }
 
-func (p *PaymentInitProducer) Publish(ctx context.Context, event events.PaymentInit) error {
+func (p *KafkaProducer) Publish(ctx context.Context, event events.Event) error {
 	eventBytes, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
 
 	return p.writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(strconv.FormatInt(int64(event.UserID), 10)),
+		Topic: event.GetTopic(),
+		Key:   event.GetKey(),
 		Value: eventBytes,
 	})
 }
 
-func (p *PaymentInitProducer) Close() error {
+func (p *KafkaProducer) Close() error {
 	return p.writer.Close()
 }

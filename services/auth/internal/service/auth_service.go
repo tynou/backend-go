@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"services/auth/internal/producer"
+	"pkg/producer"
 	"services/auth/internal/repository"
 	"time"
 
@@ -17,10 +17,10 @@ var jwtSecret = []byte("my_super_secret_key") // TODO: сделать по-но�
 
 type AuthService struct {
 	repo     *repository.UserRepository
-	producer *producer.UserRegisteredProducer
+	producer *producer.KafkaProducer
 }
 
-func NewAuthService(repo *repository.UserRepository, producer *producer.UserRegisteredProducer) *AuthService {
+func NewAuthService(repo *repository.UserRepository, producer *producer.KafkaProducer) *AuthService {
 	return &AuthService{repo: repo, producer: producer}
 }
 

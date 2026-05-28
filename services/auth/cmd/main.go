@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"pkg/producer"
 	"services/auth/internal/handlers"
-	"services/auth/internal/producer"
 	"services/auth/internal/repository"
 	"services/auth/internal/service"
 
@@ -38,11 +38,11 @@ func main() {
 	defer pool.Close()
 
 	brokers := []string{"localhost:9092"}
-	userProducer := producer.NewUserRegisteredProducer(brokers)
-	defer userProducer.Close()
+	kafkaProducer := producer.NewKafkaProducer(brokers)
+	defer kafkaProducer.Close()
 
 	repo := repository.NewUserRepository(pool)
-	svc := service.NewAuthService(repo, userProducer)
+	svc := service.NewAuthService(repo, kafkaProducer)
 	h := handlers.NewAuthHandler(svc)
 
 	r := gin.Default()

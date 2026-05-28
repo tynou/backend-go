@@ -3,17 +3,17 @@ package service
 import (
 	"context"
 	"fmt"
-	"payment/internal/producer"
 	"payment/internal/repository"
 	"pkg/events"
+	"pkg/producer"
 )
 
 type PaymentService struct {
 	repo     *repository.PaymentRepository
-	producer *producer.PaymentInitProducer
+	producer *producer.KafkaProducer
 }
 
-func NewPaymentService(repo *repository.PaymentRepository, producer *producer.PaymentInitProducer) *PaymentService {
+func NewPaymentService(repo *repository.PaymentRepository, producer *producer.KafkaProducer) *PaymentService {
 	return &PaymentService{repo: repo, producer: producer}
 }
 

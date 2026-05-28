@@ -1,23 +1,23 @@
 package consumer
 
 import (
-	"billing/internal/producer"
 	"billing/internal/repository"
 	"context"
 	"encoding/json"
 	"log"
 	"pkg/events"
+	"pkg/producer"
 
 	"github.com/segmentio/kafka-go"
 )
 
 type PaymentInitConsumer struct {
 	repo     *repository.WalletRepository
-	producer *producer.PaymentResultProducer
+	producer *producer.KafkaProducer
 	reader   *kafka.Reader
 }
 
-func NewPaymentInitConsumer(brokers []string, repo *repository.WalletRepository, producer *producer.PaymentResultProducer) *PaymentInitConsumer {
+func NewPaymentInitConsumer(brokers []string, repo *repository.WalletRepository, producer *producer.KafkaProducer) *PaymentInitConsumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     brokers,
 		Topic:       "payment.init",
