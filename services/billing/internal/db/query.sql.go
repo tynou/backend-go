@@ -38,3 +38,19 @@ func (q *Queries) DeductBalance(ctx context.Context, arg DeductBalanceParams) (i
 	}
 	return result.RowsAffected(), nil
 }
+
+const depositBalance = `-- name: DepositBalance :exec
+UPDATE wallets
+SET balance = balance + $1
+WHERE user_id = $2
+`
+
+type DepositBalanceParams struct {
+	Balance pgtype.Numeric
+	UserID  int32
+}
+
+func (q *Queries) DepositBalance(ctx context.Context, arg DepositBalanceParams) error {
+	_, err := q.db.Exec(ctx, depositBalance, arg.Balance, arg.UserID)
+	return err
+}

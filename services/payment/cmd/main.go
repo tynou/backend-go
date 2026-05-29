@@ -27,12 +27,15 @@ import (
 // @host            localhost:8082
 // @BasePath        /
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5435/payment?sslmode=disable")
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("Ошибка применения миграций: %v", err)
 	}
 
-	pool, err := pgxpool.New(context.Background(), "postgres://postgres:1234@localhost:5435/payment")
+	pool, err := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5435/payment")
 	if err != nil {
 		log.Fatalf("Ошибка подключения к БД: %v", err)
 	}
@@ -52,7 +55,7 @@ func main() {
 	)
 	defer paymentResultConsumer.Close()
 
-	go paymentResultConsumer.Start(context.Background())
+	go paymentResultConsumer.Start(ctx)
 
 	svc := service.NewPaymentService(repo, kafkaProducer)
 	h := handlers.NewPaymentHandler(svc)

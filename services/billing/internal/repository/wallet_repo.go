@@ -45,3 +45,18 @@ func (r *WalletRepository) Deduct(ctx context.Context, userID int32, amount floa
 
 	return nil
 }
+
+func (r *WalletRepository) Deposit(ctx context.Context, userID int32, amount float64) error {
+	var numericAmount pgtype.Numeric
+	amountStr := fmt.Sprintf("%.2f", amount)
+
+	err := numericAmount.Scan(amountStr)
+	if err != nil {
+		return fmt.Errorf("ошибка конвертации суммы: %w", err)
+	}
+
+	return r.queries.DepositBalance(ctx, db.DepositBalanceParams{
+		Balance: numericAmount,
+		UserID:  userID,
+	})
+}

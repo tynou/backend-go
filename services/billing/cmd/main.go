@@ -3,14 +3,14 @@ package main
 import (
 	"billing/internal/handlers"
 	"billing/internal/repository"
+	"billing/internal/service"
 	"context"
 	"errors"
 	"log"
-	"os/signal"
 	"pkg/consumer"
 	"pkg/producer"
-	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -18,8 +18,8 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5434/billing?sslmode=disable")
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
@@ -56,5 +56,11 @@ func main() {
 	go userRegisteredConsumer.Start(ctx)
 	go paymentInitConsumer.Start(ctx)
 
-	<-ctx.Done()
+	svc := service.NewBillingService(repo)
+	h := handlers.NewWalletHandler(svc)
+
+	r := gin.Default()
+
+	r.POST("/deposit", h.Deposit)
+	r.Run(":8083")
 }

@@ -26,12 +26,15 @@ import (
 // @host            localhost:8081
 // @BasePath        /
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5433/auth?sslmode=disable")
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("Ошибка применения миграций: %v", err)
 	}
 
-	pool, err := pgxpool.New(context.Background(), "postgres://postgres:1234@localhost:5433/auth")
+	pool, err := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5433/auth")
 	if err != nil {
 		log.Fatalf("Ошибка подключения к БД: %v", err)
 	}
