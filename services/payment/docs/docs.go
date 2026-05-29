@@ -15,9 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/login": {
+        "/pay": {
             "post": {
-                "description": "Возвращает JWT токен",
+                "description": "Регистрирует платёж и отправляет его на обработку",
                 "consumes": [
                     "application/json"
                 ],
@@ -25,66 +25,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "payment"
                 ],
-                "summary": "Авторизация пользователя",
+                "summary": "Оплатить со счёта пользователя",
                 "parameters": [
                     {
-                        "description": "Учетные данные",
+                        "description": "Данные платежа",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пример: {\\\"token\\\": \\\"eyJhb...\\\"}",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/register": {
-            "post": {
-                "description": "Создает нового пользователя в базе данных",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Регистрация пользователя",
-                "parameters": [
-                    {
-                        "description": "Данные пользователя",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handlers.LoginRequest"
+                            "$ref": "#/definitions/internal_handlers.PaymentRequest"
                         }
                     }
                 ],
@@ -112,18 +63,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_handlers.LoginRequest": {
+        "internal_handlers.PaymentRequest": {
             "type": "object",
             "required": [
-                "password",
-                "username"
+                "amount",
+                "user_id"
             ],
             "properties": {
-                "password": {
-                    "type": "string"
+                "amount": {
+                    "type": "number"
                 },
-                "username": {
-                    "type": "string"
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -149,11 +100,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8081",
+	Host:             "localhost:8082",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "Auth Service API",
-	Description:      "Микросервис авторизации.",
+	Title:            "Payment Service API",
+	Description:      "Микросервис оплаты.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -1,19 +1,12 @@
 package handlers
 
 import (
+	"auth/internal/service"
 	"net/http"
-	"services/auth/internal/service"
+	_ "pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
-
-type SuccessResponse struct {
-	Message string `json:"message"`
-}
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
 
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required"`
@@ -40,9 +33,9 @@ func NewAuthHandler(service *service.AuthService) *AuthHandler {
 // @Accept       json
 // @Produce      json
 // @Param        request body handlers.LoginRequest true "Данные пользователя"
-// @Success      201  {object}  SuccessResponse
-// @Failure      400  {object}  ErrorResponse
-// @Failure      500  {object}  ErrorResponse
+// @Success      201  {object}  response.SuccessResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
 // @Router       /register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
@@ -67,8 +60,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Produce      json
 // @Param        request body handlers.LoginRequest true "Учетные данные"
 // @Success      200  {object}  map[string]string "Пример: {\"token\": \"eyJhb...\"}"
-// @Failure      400  {object}  ErrorResponse
-// @Failure      401  {object}  ErrorResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
 // @Router       /login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest

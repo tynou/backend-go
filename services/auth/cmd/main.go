@@ -1,15 +1,15 @@
 package main
 
 import (
+	"auth/internal/handlers"
+	"auth/internal/repository"
+	"auth/internal/service"
 	"context"
 	"errors"
 	"log"
 	"pkg/producer"
-	"services/auth/internal/handlers"
-	"services/auth/internal/repository"
-	"services/auth/internal/service"
 
-	_ "services/auth/docs"
+	_ "auth/docs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"

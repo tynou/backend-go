@@ -1,8 +1,8 @@
 package repository
 
 import (
+	"auth/internal/db"
 	"context"
-	"services/auth/internal/db"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

@@ -1,10 +1,10 @@
 package service
 
 import (
+	"auth/internal/repository"
 	"context"
 	"errors"
 	"pkg/producer"
-	"services/auth/internal/repository"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

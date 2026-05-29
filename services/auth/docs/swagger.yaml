@@ -1,11 +1,6 @@
 basePath: /
 definitions:
-  handlers.ErrorResponse:
-    properties:
-      error:
-        type: string
-    type: object
-  handlers.LoginRequest:
+  internal_handlers.LoginRequest:
     properties:
       password:
         type: string
@@ -15,7 +10,12 @@ definitions:
     - password
     - username
     type: object
-  handlers.SuccessResponse:
+  response.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  response.SuccessResponse:
     properties:
       message:
         type: string
@@ -38,7 +38,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.LoginRequest'
+          $ref: '#/definitions/internal_handlers.LoginRequest'
       produces:
       - application/json
       responses:
@@ -51,11 +51,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/response.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Авторизация пользователя
       tags:
       - auth
@@ -70,22 +70,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.LoginRequest'
+          $ref: '#/definitions/internal_handlers.LoginRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/response.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Регистрация пользователя
       tags:
       - auth
