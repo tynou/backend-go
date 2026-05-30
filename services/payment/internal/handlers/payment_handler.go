@@ -3,14 +3,14 @@ package handlers
 import (
 	"net/http"
 	"payment/internal/service"
+	"pkg/middleware"
 	_ "pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
 type PaymentRequest struct {
-	UserId int32   `json:"user_id" binding:"required"`
-	Amount float64 `json:"amount" binding:"required"`
+	Amount float64 `json:"amount" binding:"required,gt=0"`
 }
 
 type PaymentHandler struct {
@@ -33,13 +33,15 @@ func NewPaymentHandler(service *service.PaymentService) *PaymentHandler {
 // @Failure      500  {object}  response.ErrorResponse
 // @Router       /pay [post]
 func (h *PaymentHandler) Pay(c *gin.Context) {
+	userID := c.MustGet(middleware.UserIDKey).(int32)
+
 	var req PaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err := h.service.Pay(c.Request.Context(), req.UserId, req.Amount)
+	err := h.service.Pay(c.Request.Context(), userID, req.Amount)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "payment failed"})
 		return

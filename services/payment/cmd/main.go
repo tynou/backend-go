@@ -8,6 +8,7 @@ import (
 	"payment/internal/repository"
 	"payment/internal/service"
 	"pkg/consumer"
+	"pkg/middleware"
 	"pkg/producer"
 
 	_ "payment/docs"
@@ -64,6 +65,10 @@ func main() {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.POST("/pay", h.Pay)
+	protected := r.Group("/")
+	protected.Use(middleware.ExtractUser())
+	{
+		protected.POST("/pay", h.Pay)
+	}
 	r.Run(":8082")
 }

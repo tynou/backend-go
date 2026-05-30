@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"pkg/consumer"
+	"pkg/middleware"
 	"pkg/producer"
 
 	"github.com/gin-gonic/gin"
@@ -61,6 +62,10 @@ func main() {
 
 	r := gin.Default()
 
-	r.POST("/deposit", h.Deposit)
+	protected := r.Group("/")
+	protected.Use(middleware.ExtractUser())
+	{
+		protected.POST("/deposit", h.Deposit)
+	}
 	r.Run(":8083")
 }

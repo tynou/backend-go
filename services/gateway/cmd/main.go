@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gateway/internal/middleware"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -19,8 +20,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", authProxy))
-	mux.Handle("/api/payment/", http.StripPrefix("/api/payment", paymentProxy))
-	mux.Handle("/api/billing/", http.StripPrefix("/api/billing", billingProxy))
+	mux.Handle("/api/payment/", middleware.AuthMiddleware(http.StripPrefix("/api/payment", paymentProxy)))
+	mux.Handle("/api/billing/", middleware.AuthMiddleware(http.StripPrefix("/api/billing", billingProxy)))
 
 	log.Fatal(http.ListenAndServe(":8084", mux))
 }
