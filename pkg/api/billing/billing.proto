@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package billing;
+
+option go_package = "pkg/api/billing;billing";
+
+service BillingService {
+  rpc Deposit (DepositRequest) returns (DepositResponse);
+}
+
+message DepositRequest {
+  int32 user_id = 1;
+  double amount = 2;
+}
+
+message DepositResponse {
+  string message = 1;
+}
