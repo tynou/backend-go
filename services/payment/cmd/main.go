@@ -4,29 +4,24 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"payment/internal/handlers"
 	"payment/internal/repository"
+	"payment/internal/server"
 	"payment/internal/service"
+	"pkg/api/payment"
 	"pkg/consumer"
-	"pkg/middleware"
 	"pkg/producer"
 
 	_ "payment/docs"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"google.golang.org/grpc"
 )
 
-// @title           Payment Service API
-// @version         1.0
-// @description     Микросервис оплаты.
-// @host            localhost:8082
-// @BasePath        /
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -59,16 +54,20 @@ func main() {
 	go paymentResultConsumer.Start(ctx)
 
 	svc := service.NewPaymentService(repo, kafkaProducer)
-	h := handlers.NewPaymentHandler(svc)
 
-	r := gin.Default()
-
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	protected := r.Group("/")
-	protected.Use(middleware.ExtractUser())
-	{
-		protected.POST("/pay", h.Pay)
+	lis, err := net.Listen("tcp", ":8082")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
-	r.Run(":8082")
+
+	grpcServer := grpc.NewServer()
+
+	paymentGrpcServer := server.NewPaymentGRPCServer(svc)
+	payment.RegisterPaymentServiceServer(grpcServer, paymentGrpcServer)
+
+	log.Println("gRPC Payment Service запущен на порту 8082...")
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve gRPC: %v", err)
+	}
 }

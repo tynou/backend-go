@@ -7,14 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthHandler struct {
-	client auth.AuthServiceClient
-}
-
-func NewAuthHandler(client auth.AuthServiceClient) *AuthHandler {
-	return &AuthHandler{client: client}
-}
-
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required,min=6"`
@@ -23,6 +15,14 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type AuthHandler struct {
+	client auth.AuthServiceClient
+}
+
+func NewAuthHandler(client auth.AuthServiceClient) *AuthHandler {
+	return &AuthHandler{client: client}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
