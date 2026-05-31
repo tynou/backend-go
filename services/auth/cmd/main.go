@@ -1,30 +1,25 @@
 package main
 
 import (
-	"auth/internal/handlers"
 	"auth/internal/repository"
+	"auth/internal/server"
 	"auth/internal/service"
 	"context"
 	"errors"
 	"log"
+	"net"
+	"pkg/api/auth"
 	"pkg/producer"
 
 	_ "auth/docs"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"google.golang.org/grpc"
 )
 
-// @title           Auth Service API
-// @version         1.0
-// @description     Микросервис авторизации.
-// @host            localhost:8081
-// @BasePath        /
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -46,13 +41,20 @@ func main() {
 
 	repo := repository.NewUserRepository(pool)
 	svc := service.NewAuthService(repo, kafkaProducer)
-	h := handlers.NewAuthHandler(svc)
 
-	r := gin.Default()
+	lis, err := net.Listen("tcp", ":8081")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	grpcServer := grpc.NewServer()
 
-	r.POST("/register", h.Register)
-	r.POST("/login", h.Login)
-	r.Run(":8081")
+	authGrpcServer := server.NewAuthGRPCServer(svc)
+	auth.RegisterAuthServiceServer(grpcServer, authGrpcServer)
+
+	log.Println("gRPC Auth Service запущен на порту 8081...")
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve gRPC: %v", err)
+	}
 }
