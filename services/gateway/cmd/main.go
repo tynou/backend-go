@@ -1,27 +1,30 @@
 package main
 
 import (
-	"gateway/internal/middleware"
+	"gateway/internal/handler"
 	"log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"pkg/api/auth"
+
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	authServiceURL, _ := url.Parse("http://localhost:8081")
-	paymentServiceURL, _ := url.Parse("http://localhost:8082")
-	billingServiceURL, _ := url.Parse("http://localhost:8083")
+	conn, err := grpc.NewClient("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to auth service: %v", err)
+	}
+	defer conn.Close()
 
-	authProxy := httputil.NewSingleHostReverseProxy(authServiceURL)
-	paymentProxy := httputil.NewSingleHostReverseProxy(paymentServiceURL)
-	billingProxy := httputil.NewSingleHostReverseProxy(billingServiceURL)
+	authClient := auth.NewAuthServiceClient(conn)
+	authHandler := handler.NewAuthHandler(authClient)
 
-	mux := http.NewServeMux()
+	r := gin.Default()
 
-	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", authProxy))
-	mux.Handle("/api/payment/", middleware.AuthMiddleware(http.StripPrefix("/api/payment", paymentProxy)))
-	mux.Handle("/api/billing/", middleware.AuthMiddleware(http.StripPrefix("/api/billing", billingProxy)))
+	r.POST("/api/auth/register", authHandler.Register)
+	r.POST("/api/auth/login", authHandler.Login)
 
-	log.Fatal(http.ListenAndServe(":8084", mux))
+	log.Println("API Gateway запущен на порту 8084...")
+	r.Run(":8084")
 }
