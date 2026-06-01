@@ -5,6 +5,7 @@ import (
 	"gateway/internal/middleware"
 	"log"
 	"pkg/api/auth"
+	"pkg/api/billing"
 	"pkg/api/payment"
 
 	"github.com/gin-gonic/gin"
@@ -25,11 +26,19 @@ func main() {
 	}
 	defer paymentConn.Close()
 
+	billingConn, err := grpc.NewClient("localhost:8083", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to billing service: %v", err)
+	}
+	defer billingConn.Close()
+
 	authClient := auth.NewAuthServiceClient(authConn)
 	paymentClient := payment.NewPaymentServiceClient(paymentConn)
+	billingClient := billing.NewBillingServiceClient(billingConn)
 
 	authHandler := handler.NewAuthHandler(authClient)
 	paymentHandler := handler.NewPaymentHandler(paymentClient)
+	billingHandler := handler.NewBillingHandler(billingClient)
 
 	r := gin.Default()
 
@@ -40,6 +49,8 @@ func main() {
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.POST("/api/payment/pay", paymentHandler.Pay)
+
+		protected.POST("/api/billing/deposit", billingHandler.Deposit)
 	}
 
 	log.Println("API Gateway запущен на порту 8084...")

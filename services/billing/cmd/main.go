@@ -3,19 +3,21 @@ package main
 import (
 	"billing/internal/handlers"
 	"billing/internal/repository"
+	"billing/internal/server"
 	"billing/internal/service"
 	"context"
 	"errors"
 	"log"
+	"net"
+	"pkg/api/billing"
 	"pkg/consumer"
-	"pkg/middleware"
 	"pkg/producer"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -58,14 +60,20 @@ func main() {
 	go paymentInitConsumer.Start(ctx)
 
 	svc := service.NewBillingService(repo)
-	h := handlers.NewWalletHandler(svc)
 
-	r := gin.Default()
-
-	protected := r.Group("/")
-	protected.Use(middleware.ExtractUser())
-	{
-		protected.POST("/deposit", h.Deposit)
+	lis, err := net.Listen("tcp", ":8083")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
-	r.Run(":8083")
+
+	grpcServer := grpc.NewServer()
+
+	billingGrpcServer := server.NewBillingGRPCServer(svc)
+	billing.RegisterBillingServiceServer(grpcServer, billingGrpcServer)
+
+	log.Println("gRPC Billing Service запущен на порту 8083...")
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve gRPC: %v", err)
+	}
 }
