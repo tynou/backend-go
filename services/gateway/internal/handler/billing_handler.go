@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"gateway/internal/api/response"
 	"gateway/internal/middleware"
+	"log/slog"
 	"net/http"
 	"pkg/api/billing"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/status"
 )
 
 type DepositRequest struct {
@@ -14,10 +17,11 @@ type DepositRequest struct {
 
 type BillingHandler struct {
 	client billing.BillingServiceClient
+	log    *slog.Logger
 }
 
-func NewBillingHandler(client billing.BillingServiceClient) *BillingHandler {
-	return &BillingHandler{client: client}
+func NewBillingHandler(client billing.BillingServiceClient, log *slog.Logger) *BillingHandler {
+	return &BillingHandler{client: client, log: log}
 }
 
 func (h *BillingHandler) Deposit(c *gin.Context) {
@@ -25,7 +29,8 @@ func (h *BillingHandler) Deposit(c *gin.Context) {
 
 	var req DepositRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		h.log.Error("failed to decode request", slog.Any("err", err))
+		c.JSON(http.StatusBadRequest, response.Error("failed to decode request"))
 		return
 	}
 
@@ -34,9 +39,14 @@ func (h *BillingHandler) Deposit(c *gin.Context) {
 		Amount: req.Amount,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.log.Error("failed to deposit", slog.Any("err", err))
+		if st, ok := status.FromError(err); ok {
+			c.JSON(http.StatusInternalServerError, response.Error(st.Message()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, response.Error("internal error"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": resp.Message})
+	c.JSON(http.StatusOK, response.OK(resp.Message))
 }

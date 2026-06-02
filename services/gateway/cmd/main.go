@@ -55,7 +55,7 @@ func main() {
 	r.POST("/api/auth/login", authHandler.Login)
 
 	protected := r.Group("/")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(cfg))
 	{
 		protected.POST("/api/payment/pay", paymentHandler.Pay)
 

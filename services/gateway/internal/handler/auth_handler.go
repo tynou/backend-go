@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"gateway/internal/api/response"
 	"log/slog"
 	"net/http"
 	"pkg/api/auth"
@@ -32,31 +33,11 @@ func NewAuthHandler(client auth.AuthServiceClient, log *slog.Logger) *AuthHandle
 	return &AuthHandler{client: client, log: log}
 }
 
-type Response struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-	Error   string `json:"error,omitempty"`
-}
-
-func OK(msg string) Response {
-	return Response{
-		Status:  "OK",
-		Message: msg,
-	}
-}
-
-func Error(msg string) Response {
-	return Response{
-		Status: "Error",
-		Error:  msg,
-	}
-}
-
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.log.Error("failed to decode request", slog.Any("err", err))
-		c.JSON(http.StatusBadRequest, Error("failed to decode request"))
+		c.JSON(http.StatusBadRequest, response.Error("failed to decode request"))
 		return
 	}
 
@@ -67,21 +48,21 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		h.log.Error("failed to register user", slog.Any("err", err))
 		if st, ok := status.FromError(err); ok {
-			c.JSON(http.StatusInternalServerError, Error(st.Message()))
+			c.JSON(http.StatusInternalServerError, response.Error(st.Message()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Error("internal error"))
+		c.JSON(http.StatusInternalServerError, response.Error("internal error"))
 		return
 	}
 
-	c.JSON(http.StatusCreated, OK(resp.Message))
+	c.JSON(http.StatusCreated, response.OK(resp.Message))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.log.Error("failed to decode request", slog.Any("err", err))
-		c.JSON(http.StatusBadRequest, Error("failed to decode request"))
+		c.JSON(http.StatusBadRequest, response.Error("failed to decode request"))
 		return
 	}
 
@@ -92,10 +73,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		h.log.Error("failed to login", slog.Any("err", err))
 		if st, ok := status.FromError(err); ok {
-			c.JSON(http.StatusUnauthorized, Error(st.Message()))
+			c.JSON(http.StatusUnauthorized, response.Error(st.Message()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Error("internal error"))
+		c.JSON(http.StatusInternalServerError, response.Error("internal error"))
 		return
 	}
 

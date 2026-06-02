@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Port           int    `env:"PORT" env-default:"8081"`
+	Port           int    `env:"PORT" env-default:"8084"`
 	AuthAddress    string `env:"AUTH_ADDRESS" env-required:"true"`
 	PaymentAddress string `env:"PAYMENT_ADDRESS" env-required:"true"`
 	BillingAddress string `env:"BILLING_ADDRESS" env-required:"true"`

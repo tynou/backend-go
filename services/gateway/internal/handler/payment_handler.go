@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"gateway/internal/api/response"
 	"gateway/internal/middleware"
+	"log/slog"
 	"net/http"
 	"pkg/api/payment"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/status"
 )
 
 type PaymentRequest struct {
@@ -14,10 +17,11 @@ type PaymentRequest struct {
 
 type PaymentHandler struct {
 	client payment.PaymentServiceClient
+	log    *slog.Logger
 }
 
-func NewPaymentHandler(client payment.PaymentServiceClient) *PaymentHandler {
-	return &PaymentHandler{client: client}
+func NewPaymentHandler(client payment.PaymentServiceClient, log *slog.Logger) *PaymentHandler {
+	return &PaymentHandler{client: client, log: log}
 }
 
 func (h *PaymentHandler) Pay(c *gin.Context) {
@@ -25,7 +29,8 @@ func (h *PaymentHandler) Pay(c *gin.Context) {
 
 	var req PaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		h.log.Error("failed to decode request", slog.Any("err", err))
+		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
 		return
 	}
 
@@ -34,9 +39,14 @@ func (h *PaymentHandler) Pay(c *gin.Context) {
 		Amount: req.Amount,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.log.Error("failed to create payment", slog.Any("err", err))
+		if st, ok := status.FromError(err); ok {
+			c.JSON(http.StatusInternalServerError, response.Error(st.Message()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": resp.Message})
+	c.JSON(http.StatusCreated, response.OK(resp.Message))
 }

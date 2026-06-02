@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"gateway/internal/config"
 	"net/http"
 	"strings"
 
@@ -8,11 +9,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("my_super_secret_key") // TODO: сделать по-нормальному
-
 const UserIDKey = "user_id"
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -29,7 +28,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenString := parts[1]
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
+			return cfg.JWTSecret, nil
 		})
 
 		if err != nil || !token.Valid {
