@@ -3,7 +3,11 @@ package server
 import (
 	"auth/internal/service"
 	"context"
+	"errors"
 	"pkg/api/auth"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type AuthGRPCServer struct {
@@ -18,7 +22,7 @@ func NewAuthGRPCServer(svc *service.AuthService) *AuthGRPCServer {
 func (s *AuthGRPCServer) Register(ctx context.Context, req *auth.RegisterRequest) (*auth.RegisterResponse, error) {
 	err := s.svc.Register(ctx, req.Username, req.Password)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, "failed to register user")
 	}
 
 	return &auth.RegisterResponse{
@@ -29,7 +33,10 @@ func (s *AuthGRPCServer) Register(ctx context.Context, req *auth.RegisterRequest
 func (s *AuthGRPCServer) Login(ctx context.Context, req *auth.LoginRequest) (*auth.LoginResponse, error) {
 	token, err := s.svc.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "invalid username or password")
+		}
+		return nil, status.Error(codes.Internal, "failed to login")
 	}
 
 	return &auth.LoginResponse{

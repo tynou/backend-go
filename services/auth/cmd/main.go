@@ -1,60 +1,61 @@
 package main
 
 import (
+	"auth/internal/app"
+	"auth/internal/config"
 	"auth/internal/repository"
-	"auth/internal/server"
 	"auth/internal/service"
 	"context"
 	"errors"
-	"log"
-	"net"
-	"pkg/api/auth"
+	"log/slog"
+	"os"
+	"os/signal"
 	"pkg/producer"
-
-	_ "auth/docs"
+	"syscall"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
 )
 
 func main() {
+	cfg := config.MustLoad()
+	log := setupLogger()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5433/auth?sslmode=disable")
+	m, _ := migrate.New("file://db/migrations", cfg.DBConn)
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Ошибка применения миграций: %v", err)
+		log.Error("migration error", slog.String("err", err.Error()))
 	}
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5433/auth")
+	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
-		log.Fatalf("Ошибка подключения к БД: %v", err)
+		log.Error("db connection error", slog.String("err", err.Error()))
 	}
 	defer pool.Close()
 
-	brokers := []string{"localhost:9092"}
+	brokers := []string{cfg.KafkaBroker}
 	kafkaProducer := producer.NewKafkaProducer(brokers)
 	defer kafkaProducer.Close()
 
 	repo := repository.NewUserRepository(pool)
-	svc := service.NewAuthService(repo, kafkaProducer)
+	svc := service.NewAuthService(repo, kafkaProducer, log, cfg)
 
-	lis, err := net.Listen("tcp", ":8081")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
+	grpcApp := app.NewGRPCApp(log, svc, cfg.Port)
 
-	grpcServer := grpc.NewServer()
+	go grpcApp.MustRun()
 
-	authGrpcServer := server.NewAuthGRPCServer(svc)
-	auth.RegisterAuthServiceServer(grpcServer, authGrpcServer)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Println("gRPC Auth Service запущен на порту 8081...")
+	<-stop
 
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve gRPC: %v", err)
-	}
+	grpcApp.Stop()
+}
+
+func setupLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
