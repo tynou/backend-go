@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"gateway/internal/config"
 	"gateway/internal/handler"
 	"gateway/internal/middleware"
-	"log"
+	"log/slog"
+	"os"
 	"pkg/api/auth"
 	"pkg/api/billing"
 	"pkg/api/payment"
@@ -14,21 +17,27 @@ import (
 )
 
 func main() {
-	authConn, err := grpc.NewClient("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	cfg := config.MustLoad()
+	log := setupLogger()
+
+	authConn, err := grpc.NewClient(cfg.AuthAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("failed to connect to auth service: %v", err)
+		log.Error("failed to connect to auth service", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer authConn.Close()
 
-	paymentConn, err := grpc.NewClient("localhost:8082", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	paymentConn, err := grpc.NewClient(cfg.PaymentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("failed to connect to payment service: %v", err)
+		log.Error("failed to connect to payment service", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer paymentConn.Close()
 
-	billingConn, err := grpc.NewClient("localhost:8083", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	billingConn, err := grpc.NewClient(cfg.BillingAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("failed to connect to billing service: %v", err)
+		log.Error("failed to connect to billing service", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer billingConn.Close()
 
@@ -36,7 +45,7 @@ func main() {
 	paymentClient := payment.NewPaymentServiceClient(paymentConn)
 	billingClient := billing.NewBillingServiceClient(billingConn)
 
-	authHandler := handler.NewAuthHandler(authClient)
+	authHandler := handler.NewAuthHandler(authClient, log)
 	paymentHandler := handler.NewPaymentHandler(paymentClient)
 	billingHandler := handler.NewBillingHandler(billingClient)
 
@@ -53,6 +62,11 @@ func main() {
 		protected.POST("/api/billing/deposit", billingHandler.Deposit)
 	}
 
-	log.Println("API Gateway запущен на порту 8084...")
-	r.Run(":8084")
+	log.Info("gateway is running", slog.Int("port", cfg.Port))
+
+	r.Run(fmt.Sprintf(":%d", cfg.Port))
+}
+
+func setupLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }

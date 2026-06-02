@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"pkg/api/auth"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/status"
 )
 
 type RegisterRequest struct {
@@ -17,18 +19,44 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type AuthHandler struct {
-	client auth.AuthServiceClient
+type LoginResponse struct {
+	Token string `json:"token"`
 }
 
-func NewAuthHandler(client auth.AuthServiceClient) *AuthHandler {
-	return &AuthHandler{client: client}
+type AuthHandler struct {
+	client auth.AuthServiceClient
+	log    *slog.Logger
+}
+
+func NewAuthHandler(client auth.AuthServiceClient, log *slog.Logger) *AuthHandler {
+	return &AuthHandler{client: client, log: log}
+}
+
+type Response struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func OK(msg string) Response {
+	return Response{
+		Status:  "OK",
+		Message: msg,
+	}
+}
+
+func Error(msg string) Response {
+	return Response{
+		Status: "Error",
+		Error:  msg,
+	}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		h.log.Error("failed to decode request", slog.Any("err", err))
+		c.JSON(http.StatusBadRequest, Error("failed to decode request"))
 		return
 	}
 
@@ -37,17 +65,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.log.Error("failed to register user", slog.Any("err", err))
+		if st, ok := status.FromError(err); ok {
+			c.JSON(http.StatusInternalServerError, Error(st.Message()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, Error("internal error"))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": resp.Message})
+	c.JSON(http.StatusCreated, OK(resp.Message))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		h.log.Error("failed to decode request", slog.Any("err", err))
+		c.JSON(http.StatusBadRequest, Error("failed to decode request"))
 		return
 	}
 
@@ -56,9 +90,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		h.log.Error("failed to login", slog.Any("err", err))
+		if st, ok := status.FromError(err); ok {
+			c.JSON(http.StatusUnauthorized, Error(st.Message()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, Error("internal error"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": resp.Token})
+	c.JSON(http.StatusOK, &LoginResponse{Token: resp.Token})
 }
