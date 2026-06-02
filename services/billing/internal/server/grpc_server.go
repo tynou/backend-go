@@ -4,6 +4,9 @@ import (
 	"billing/internal/service"
 	"context"
 	"pkg/api/billing"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type BillingGRPCServer struct {
@@ -18,7 +21,7 @@ func NewBillingGRPCServer(svc *service.BillingService) *BillingGRPCServer {
 func (s *BillingGRPCServer) Deposit(ctx context.Context, req *billing.DepositRequest) (*billing.DepositResponse, error) {
 	err := s.svc.Deposit(ctx, req.UserId, req.Amount)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, "failed to deposit")
 	}
 
 	return &billing.DepositResponse{

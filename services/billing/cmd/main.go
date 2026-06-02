@@ -1,43 +1,49 @@
 package main
 
 import (
+	"billing/internal/app"
+	"billing/internal/config"
 	"billing/internal/handlers"
 	"billing/internal/repository"
-	"billing/internal/server"
 	"billing/internal/service"
 	"context"
 	"errors"
-	"log"
-	"net"
-	"pkg/api/billing"
+	"log/slog"
+	"os"
+	"os/signal"
 	"pkg/consumer"
 	"pkg/producer"
+	"syscall"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
 )
 
 func main() {
+	cfg := config.MustLoad()
+	log := setupLogger()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5434/billing?sslmode=disable")
+	m, _ := migrate.New("file://db/migrations", cfg.DBConn)
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Ошибка применения миграций: %v", err)
+		log.Error("migration error", slog.Any("err", err))
+		os.Exit(1)
 	}
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5434/billing")
+	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
-		log.Fatalf("Ошибка подключения к БД: %v", err)
+		log.Error("db connection error", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	repo := repository.NewWalletRepository(pool)
 
-	brokers := []string{"localhost:9092"}
+	brokers := []string{cfg.KafkaBroker}
 	kafkaProducer := producer.NewKafkaProducer(brokers)
 	defer kafkaProducer.Close()
 
@@ -46,12 +52,15 @@ func main() {
 	userRegisteredConsumer := consumer.NewKafkaConsumer(
 		brokers,
 		"billing-service-group",
+		log,
 		eventHandler.OnUserRegistered,
 	)
 	defer userRegisteredConsumer.Close()
+
 	paymentInitConsumer := consumer.NewKafkaConsumer(
 		brokers,
 		"billing-service-group",
+		log,
 		eventHandler.OnPaymentInit,
 	)
 	defer paymentInitConsumer.Close()
@@ -59,21 +68,20 @@ func main() {
 	go userRegisteredConsumer.Start(ctx)
 	go paymentInitConsumer.Start(ctx)
 
-	svc := service.NewBillingService(repo)
+	svc := service.NewBillingService(repo, log)
 
-	lis, err := net.Listen("tcp", ":8083")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
+	grpcApp := app.NewGRPCApp(log, svc, cfg.Port)
 
-	grpcServer := grpc.NewServer()
+	go grpcApp.MustRun()
 
-	billingGrpcServer := server.NewBillingGRPCServer(svc)
-	billing.RegisterBillingServiceServer(grpcServer, billingGrpcServer)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Println("gRPC Billing Service запущен на порту 8083...")
+	<-stop
 
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve gRPC: %v", err)
-	}
+	grpcApp.Stop()
+}
+
+func setupLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
