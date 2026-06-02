@@ -46,8 +46,8 @@ func main() {
 	billingClient := billing.NewBillingServiceClient(billingConn)
 
 	authHandler := handler.NewAuthHandler(authClient, log)
-	paymentHandler := handler.NewPaymentHandler(paymentClient)
-	billingHandler := handler.NewBillingHandler(billingClient)
+	paymentHandler := handler.NewPaymentHandler(paymentClient, log)
+	billingHandler := handler.NewBillingHandler(billingClient, log)
 
 	r := gin.Default()
 
