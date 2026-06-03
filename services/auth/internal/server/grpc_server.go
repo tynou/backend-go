@@ -25,6 +25,8 @@ func (s *AuthGRPCServer) Register(ctx context.Context, req *auth.RegisterRequest
 		return nil, status.Error(codes.Internal, "failed to register user")
 	}
 
+	// TODO: отправлять понятную ошибку, если ник занят
+
 	return &auth.RegisterResponse{
 		Message: "user registered successfully",
 	}, nil

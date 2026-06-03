@@ -33,13 +33,13 @@ func NewAuthService(repo *repository.UserRepository, producer *producer.KafkaPro
 func (s *AuthService) Register(ctx context.Context, username, password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		s.log.Error("failed to generate password hash", slog.String("error", err.Error()))
+		s.log.Error("failed to generate password hash", slog.Any("err", err))
 		return err
 	}
 
 	user, err := s.repo.CreateUser(ctx, username, string(hash))
 	if err != nil {
-		s.log.Error("failed to save user", slog.String("error", err.Error()))
+		s.log.Error("failed to save user", slog.Any("err", err))
 		return err
 	}
 
@@ -48,7 +48,7 @@ func (s *AuthService) Register(ctx context.Context, username, password string) e
 		Username: user.Username,
 	})
 	if err != nil {
-		s.log.Error("failed to send user registration event", slog.String("error", err.Error()))
+		s.log.Error("failed to send user registration event", slog.Any("err", err))
 		return err
 	}
 
@@ -58,13 +58,13 @@ func (s *AuthService) Register(ctx context.Context, username, password string) e
 func (s *AuthService) Login(ctx context.Context, username, password string) (string, error) {
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
-		s.log.Error("failed to find user", slog.String("err", err.Error()))
+		s.log.Error("failed to find user", slog.Any("err", err))
 		return "", err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		s.log.Info("invalid credentials", slog.String("err", err.Error()))
+		s.log.Info("invalid credentials", slog.Any("err", err))
 		return "", ErrInvalidCredentials
 	}
 
@@ -75,7 +75,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 
 	signedToken, err := token.SignedString(s.cfg.JWTSecret)
 	if err != nil {
-		s.log.Error("failed to generate token", slog.String("err", err.Error()))
+		s.log.Error("failed to generate token", slog.Any("err", err))
 		return "", err
 	}
 

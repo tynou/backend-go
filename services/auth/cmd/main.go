@@ -28,12 +28,14 @@ func main() {
 
 	m, _ := migrate.New("file://db/migrations", cfg.DBConn)
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Error("migration error", slog.String("err", err.Error()))
+		log.Error("migration error", slog.Any("err", err))
+		os.Exit(1)
 	}
 
 	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
-		log.Error("db connection error", slog.String("err", err.Error()))
+		log.Error("db connection error", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer pool.Close()
 

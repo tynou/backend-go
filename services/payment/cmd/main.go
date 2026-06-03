@@ -3,69 +3,75 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
-	"net"
+	"log/slog"
+	"os"
+	"os/signal"
+	"payment/internal/app"
+	"payment/internal/config"
 	"payment/internal/handlers"
 	"payment/internal/repository"
-	"payment/internal/server"
 	"payment/internal/service"
-	"pkg/api/payment"
 	"pkg/consumer"
 	"pkg/producer"
+	"syscall"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
 )
 
 func main() {
+	cfg := config.MustLoad()
+	log := setupLogger()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, _ := migrate.New("file://db/migrations", "postgres://postgres:1234@localhost:5435/payment?sslmode=disable")
+	m, _ := migrate.New("file://db/migrations", cfg.DBConn)
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("Ошибка применения миграций: %v", err)
+		log.Error("migration error", slog.Any("err", err))
+		os.Exit(1)
 	}
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:1234@localhost:5435/payment")
+	pool, err := pgxpool.New(ctx, cfg.DBConn)
 	if err != nil {
-		log.Fatalf("Ошибка подключения к БД: %v", err)
+		log.Error("db connection error", slog.Any("err", err))
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	repo := repository.NewPaymentRepository(pool)
 	eventHandler := handlers.NewPaymentEventHandler(repo)
 
-	brokers := []string{"localhost:9092"}
+	brokers := []string{cfg.KafkaBroker}
 	kafkaProducer := producer.NewKafkaProducer(brokers)
 	defer kafkaProducer.Close()
 
 	paymentResultConsumer := consumer.NewKafkaConsumer(
 		brokers,
 		"payment-service-group",
+		log,
 		eventHandler.OnPaymentResult,
 	)
 	defer paymentResultConsumer.Close()
 
 	go paymentResultConsumer.Start(ctx)
 
-	svc := service.NewPaymentService(repo, kafkaProducer)
+	svc := service.NewPaymentService(repo, kafkaProducer, log)
 
-	lis, err := net.Listen("tcp", ":8082")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
+	grpcApp := app.NewGRPCApp(log, svc, cfg.Port)
 
-	grpcServer := grpc.NewServer()
+	go grpcApp.MustRun()
 
-	paymentGrpcServer := server.NewPaymentGRPCServer(svc)
-	payment.RegisterPaymentServiceServer(grpcServer, paymentGrpcServer)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Println("gRPC Payment Service запущен на порту 8082...")
+	<-stop
 
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve gRPC: %v", err)
-	}
+	grpcApp.Stop()
+}
+
+func setupLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }

@@ -8,14 +8,14 @@ type Response struct {
 
 func OK(msg string) Response {
 	return Response{
-		Status:  "OK",
+		Status:  "ok",
 		Message: msg,
 	}
 }
 
 func Error(msg string) Response {
 	return Response{
-		Status: "Error",
+		Status: "error",
 		Error:  msg,
 	}
 }
