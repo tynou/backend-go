@@ -24,6 +24,16 @@ func NewBillingHandler(client billing.BillingServiceClient, log *slog.Logger) *B
 	return &BillingHandler{client: client, log: log}
 }
 
+// Deposit godoc
+// @Summary      Пополнение счёта
+// @Description  Пополняет счёт пользователя
+// @Tags         Billing
+// @Accept       json
+// @Produce      json
+// @Param        request body handler.DepositRequest true "Информация о пополнении"
+// @Success      200  {object}  response.Response"
+// @Router       /api/billing/deposit [post]
+// @Security Bearer
 func (h *BillingHandler) Deposit(c *gin.Context) {
 	userID := c.MustGet(middleware.UserIDKey).(int32)
 

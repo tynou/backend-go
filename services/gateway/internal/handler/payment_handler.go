@@ -24,13 +24,23 @@ func NewPaymentHandler(client payment.PaymentServiceClient, log *slog.Logger) *P
 	return &PaymentHandler{client: client, log: log}
 }
 
+// Pay godoc
+// @Summary      Оплатить со счёта пользователя
+// @Description  Регистрирует платёж и отправляет его на обработку
+// @Tags         Payment
+// @Accept       json
+// @Produce      json
+// @Param        request body handler.PaymentRequest true "Данные платежа"
+// @Success      201  {object}  response.Response
+// @Router       /api/payment/pay [post]
+// @Security Bearer
 func (h *PaymentHandler) Pay(c *gin.Context) {
 	userID := c.MustGet(middleware.UserIDKey).(int32)
 
 	var req PaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.log.Error("failed to decode request", slog.Any("err", err))
-		c.JSON(http.StatusBadRequest, response.Error(err.Error()))
+		c.JSON(http.StatusBadRequest, response.Error("failed to decode request"))
 		return
 	}
 
@@ -44,7 +54,7 @@ func (h *PaymentHandler) Pay(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, response.Error(st.Message()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, response.Error(err.Error()))
+		c.JSON(http.StatusInternalServerError, response.Error("internal error"))
 		return
 	}
 

@@ -1,0 +1,152 @@
+definitions:
+  gateway_internal_api_response.Response:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  internal_handler.DepositRequest:
+    properties:
+      amount:
+        type: number
+    required:
+    - amount
+    type: object
+  internal_handler.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  internal_handler.LoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  internal_handler.PaymentRequest:
+    properties:
+      amount:
+        type: number
+    required:
+    - amount
+    type: object
+  internal_handler.RegisterRequest:
+    properties:
+      password:
+        minLength: 6
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+info:
+  contact: {}
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает JWT токен
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler.LoginResponse'
+      summary: Авторизация пользователя
+      tags:
+      - Auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя в базе данных
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/gateway_internal_api_response.Response'
+      summary: Регистрация пользователя
+      tags:
+      - Auth
+  /api/billing/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Пополняет счёт пользователя
+      parameters:
+      - description: Информация о пополнении
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.DepositRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gateway_internal_api_response.Response'
+      security:
+      - Bearer: []
+      summary: Пополнение счёта
+      tags:
+      - Billing
+  /api/payment/pay:
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует платёж и отправляет его на обработку
+      parameters:
+      - description: Данные платежа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.PaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/gateway_internal_api_response.Response'
+      security:
+      - Bearer: []
+      summary: Оплатить со счёта пользователя
+      tags:
+      - Payment
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

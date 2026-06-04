@@ -33,6 +33,15 @@ func NewAuthHandler(client auth.AuthServiceClient, log *slog.Logger) *AuthHandle
 	return &AuthHandler{client: client, log: log}
 }
 
+// Register godoc
+// @Summary      Регистрация пользователя
+// @Description  Создает нового пользователя в базе данных
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body handler.RegisterRequest true "Данные пользователя"
+// @Success      201  {object}  response.Response
+// @Router       /api/auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,6 +67,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, response.OK(resp.Message))
 }
 
+// Login godoc
+// @Summary      Авторизация пользователя
+// @Description  Возвращает JWT токен
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body handler.LoginRequest true "Учетные данные"
+// @Success      200  {object}  handler.LoginResponse"
+// @Router       /api/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -26,7 +26,7 @@ func main() {
 	log := setupLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	//defer cancel()
 
 	m, _ := migrate.New("file://db/migrations", cfg.DBConn)
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
@@ -51,7 +51,7 @@ func main() {
 
 	userRegisteredConsumer := consumer.NewKafkaConsumer(
 		brokers,
-		"billing-service-group",
+		"user-registered-group",
 		log,
 		eventHandler.OnUserRegistered,
 	)
@@ -59,7 +59,7 @@ func main() {
 
 	paymentInitConsumer := consumer.NewKafkaConsumer(
 		brokers,
-		"billing-service-group",
+		"payment-init-group",
 		log,
 		eventHandler.OnPaymentInit,
 	)
@@ -78,6 +78,8 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	<-stop
+
+	cancel()
 
 	grpcApp.Stop()
 }
