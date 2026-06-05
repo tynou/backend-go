@@ -57,6 +57,21 @@ services:
       - kafka_secrets:/etc/kafka/secrets
       - kafka_config:/mnt/shared/config
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./services/auth/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - DB_CONN=postgres://postgres:1234@auth-db:5432/auth?sslmode=disable
+      - KAFKA_BROKER=kafka:29092
+      - JWT_SECRET=my_super_secret_key
+    depends_on:
+      - auth-db
+      - kafka
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     ports:
@@ -68,6 +83,39 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092"
       DYNAMIC_CONFIG_ENABLED: "true"
 
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - loki
+
+  alloy:
+    image: grafana/alloy:latest
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+    depends_on:
+      - loki
+
 volumes:
   auth_db_data:
   billing_db_data:
@@ -76,3 +124,6 @@ volumes:
   kafka_data:
   kafka_secrets:
   kafka_config:
+
+  grafana_data:
+  loki_data:
