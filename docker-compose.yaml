@@ -108,9 +108,9 @@ services:
       - "8084:8084"
     environment:
       - PORT=8084
-      - AUTH_ADDRESS=auth:8081
-      - PAYMENT_ADDRESS=payment:8082
-      - BILLING_ADDRESS=billing:8083
+      - AUTH_ADDRESS=auth-service:8081
+      - PAYMENT_ADDRESS=payment-service:8082
+      - BILLING_ADDRESS=billing-service:8083
       - JWT_SECRET=my_super_secret_key
 
   kafka-ui:
