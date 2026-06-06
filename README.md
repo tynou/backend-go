@@ -1,1 +1,1 @@
-# backend-go
+![Схема](/diagram.svg)
